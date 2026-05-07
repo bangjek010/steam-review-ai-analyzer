@@ -63,8 +63,6 @@ Alih-alih membaca feedback secara manual, aplikasi ini menggunakan **Natural Lan
      
        ```bash
      GEMINI_API_KEY = "your_actual_api_key_here"
-  
-
 
 5. **Launch the App**
    ```bash
