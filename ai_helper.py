@@ -64,13 +64,16 @@ def generate_topic_labels_with_ai(game_name, topics_dict, language):
     Include 1 relevant emoji at the beginning of the title.
     If language is 'indonesian', write titles in Indonesian. If 'english', write in English.
 
-    OUTPUT FORMAT STRICTLY LIKE THIS (No markdown, no extra text):
+    OUTPUT FORMAT STRICTLY LIKE THIS (Do not add any other text):
     1| 🛠️ Title Here
     2| 🎨 Title Here
+    3| ⚽ Title Here
     """
+
     try:
         response = model.generate_content(prompt)
         lines = response.text.strip().split('\n')
+        
         labels = [line.split('|')[1].strip() for line in lines if '|' in line]
         if len(labels) != len(topics_dict):
             return [f"Topik {i+1}" for i in range(len(topics_dict))]
