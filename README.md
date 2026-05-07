@@ -67,14 +67,16 @@ Alih-alih membaca feedback secara manual, aplikasi ini menggunakan **Natural Lan
 5. **Launch the App**
    ```bash
    streamlit run app.py
-
- 
+   
+---
 
 📸 Screenshots
 <img width="1918" height="965" alt="image" src="https://github.com/user-attachments/assets/e9732f18-0e02-4a7c-beba-00b96a2f9724" />
 <img width="1474" height="665" alt="image" src="https://github.com/user-attachments/assets/d4db9bbf-2969-4a51-b623-a1685065b448" />
 <img width="1576" height="882" alt="image" src="https://github.com/user-attachments/assets/28b45941-f3ac-4b9c-bfc7-f6fa2721a9c3" />
 <img width="1508" height="530" alt="image" src="https://github.com/user-attachments/assets/78f91ee5-e0d8-4a13-bc3f-40a8a0dbbb44" />
+
+---
 
 📝 License
 Distributed under the MIT License. See LICENSE for more information.
