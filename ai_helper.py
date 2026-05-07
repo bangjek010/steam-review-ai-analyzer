@@ -3,21 +3,23 @@ import google.generativeai as genai
 import streamlit as st
 
 def get_api_key():
-    # Mengambil API key dari Streamlit Secrets (aman)
     try:
         return st.secrets["GEMINI_API_KEY"]
     except Exception:
-        st.error("API Key tidak ditemukan. Pastikan sudah mengatur secrets di Streamlit.")
         return None
 
-# Menerima tambahan parameter 'game_name'
 def generate_ai_insight(game_name, topics_list, review_type, app_id):
     API_KEY = get_api_key()
     if not API_KEY: return "Gagal: API Key tidak ada."
     
     genai.configure(api_key=API_KEY)
-    # Menggunakan Gemini 1.5 Flash (Model terbaru & lebih cerdas dari 2.5 flash yang belum stabil)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    
+    # 🌟 SISTEM KASTA: Jika model atas limit (429), otomatis turun ke model bawahnya
+    daftar_model = [
+        'gemini-2.5-flash',       # Pintar, tapi limit harian cuma 20
+        'gemini-3.1-flash-lite',  # Penyelamat! Limit harian 500
+        'gemini-3-flash'          # Cadangan terakhir
+    ]
 
     prompt = f"""
     Anda adalah seorang Lead Game Analyst. 
@@ -28,54 +30,86 @@ def generate_ai_insight(game_name, topics_list, review_type, app_id):
     {topics_list}
 
     INSTRUKSI PENTING:
-    Karena Anda sudah tahu ini adalah game {game_name}, hubungkan kata kunci di atas dengan konteks genre dan fitur asli dari game ini. JANGAN berhalusinasi menyebutkan fitur yang tidak ada di dalam game ini.
+    Hubungkan kata kunci di atas dengan konteks genre dan fitur asli dari game {game_name}. JANGAN berhalusinasi.
 
     Buatlah laporan analisis strategis dengan format markdown berikut:
-    1. 🎯 **Ringkasan Sentimen {game_name}:** Jelaskan secara spesifik apa poin utama yang difokuskan pemain dari kata kunci di atas.
-    2. 💡 **3 Rekomendasi Prioritas untuk Developer:** Langkah konkret apa yang harus dilakukan tim dev minggu ini untuk merespons topik tersebut?
-    3. 📊 **Akar Masalah / Kekuatan Utama:** Analisis apakah topik di atas dominan ke masalah teknis (bug/crash/server), desain UI/UX, fundamental gameplay, atau kebijakan monetisasi.
+    1. 🎯 **Ringkasan Sentimen {game_name}:** Jelaskan secara spesifik poin utama pemain.
+    2. 💡 **3 Rekomendasi Prioritas untuk Developer:** Langkah konkret minggu ini.
+    3. 📊 **Akar Masalah / Kekuatan Utama:** Analisis apakah dominan teknis, UI/UX, gameplay, atau monetisasi.
     
-    Gunakan bahasa Indonesia yang profesional, tajam, namun mudah dipahami (actionable).
+    Gunakan bahasa Indonesia yang profesional, tajam, namun mudah dipahami.
     """
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"Gagal memuat AI Insight: {e}"
+    
+    # Mencoba model satu per satu
+    for nama_model in daftar_model:
+        try:
+            model = genai.GenerativeModel(nama_model)
+            response = model.generate_content(prompt)
+            return response.text # Jika berhasil, langsung kembalikan hasil
+        except Exception as e:
+            error_msg = str(e).lower()
+            # Jika Error karena kuota habis (429), Lanjut coba model berikutnya!
+            if "429" in error_msg or "quota" in error_msg:
+                continue
+            
+    # Jika semua model di daftar sudah dicoba dan tetap gagal
+    return "⚠️ Server AI sedang penuh. Silakan coba beberapa saat lagi."
 
-# Menerima tambahan parameter 'game_name'
 def generate_topic_labels_with_ai(game_name, topics_dict, language):
     API_KEY = get_api_key()
     if not API_KEY: return [f"Topik {i+1}" for i in range(len(topics_dict))]
     
     genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    
+    # 🌟 SISTEM KASTA UNTUK LABEL TOPIK
+    daftar_model = [
+        'gemini-2.5-flash',
+        'gemini-3.1-flash-lite'
+    ]
 
     formatted_topics = "\n".join([f"Topik {k}: {', '.join(v)}" for k, v in topics_dict.items()])
 
     prompt = f"""
-    Act as a Game Data Analyst. You are analyzing Topic Modeling results from player reviews for the game: "{game_name}".
-    The keywords are in this language: {language}.
+    Berikan judul kategori singkat (maks 3 kata) untuk Topik ulasan game "{game_name}".
+    Bahasa: {language}.
 
-    Here are the topics and their top keywords:
+    Kata Kunci:
     {formatted_topics}
 
-    Task: Provide a short, specific, and highly relevant category title (max 4 words) for each topic based on the keywords AND the context of the game "{game_name}". 
-    Include 1 relevant emoji at the beginning of the title.
-    If language is 'indonesian', write titles in Indonesian. If 'english', write in English.
+    PILIH DARI KATEGORI BERIKUT: UI/UX, Gameplay, Server/Bug, Cerita, Audio, Komunitas, Visual, Monetisasi, Fitur Baru, atau Sentimen Umum.
+    Gunakan 1 Emoji di awal.
 
-    OUTPUT FORMAT STRICTLY LIKE THIS EXAMPLE (Do not add any other text):
+    FORMAT BALASAN WAJIB SEPERTI INI (Tanpa teks tambahan):
     Topik 1: 🎮 Fitur Gameplay
     Topik 2: 🛠️ Masalah Server
     """
 
-    try:
-        response = model.generate_content(prompt)
-        lines = response.text.strip().split('\n')
-        
-        labels = [line.split('|')[1].strip() for line in lines if '|' in line]
-        if len(labels) != len(topics_dict):
-            return [f"Topik {i+1}" for i in range(len(topics_dict))]
+    # FUNGSI PEMOTONG TEKS (SUDAH DIPERBAIKI)
+    def parse_labels(response_text):
+        clean_text = response_text.replace("```text", "").replace("```", "").strip()
+        lines = clean_text.split('\n')
+        labels = []
+        for line in lines:
+            # SEKARANG MENCARI TITIK DUA (:), BUKAN GARIS (|)
+            if "Topik" in line and ":" in line:
+                nama_topik = line.split(':', 1)[1].strip()
+                labels.append(nama_topik)
         return labels
-    except Exception:
-        return [f"Topik {i+1}" for i in range(len(topics_dict))]
+
+    # Mencoba model satu per satu
+    for nama_model in daftar_model:
+        try:
+            model = genai.GenerativeModel(nama_model)
+            response = model.generate_content(prompt)
+            labels = parse_labels(response.text)
+            
+            # Pastikan jumlah label sama dengan jumlah topik
+            if len(labels) == len(topics_dict):
+                return labels
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "429" in error_msg or "quota" in error_msg:
+                continue # Lanjut ke model berikutnya jika limit
+                
+    # Jika gagal total, kembalikan ke nama default (Topik 1, Topik 2)
+    return [f"Topik {i+1}" for i in range(len(topics_dict))]
