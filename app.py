@@ -169,17 +169,32 @@ if st.session_state.data_diproses:
             mime="image/png"
         )
 
+# --- GANTI ISI TAB 2 DI APP.PY MENJADI INI ---
     with tab2:
         st.subheader("Saran Strategis dari AI")
-        if st.button("✨ Generate Analisis Mendalam", type="primary"):
-            with st.spinner("AI sedang memformulasikan strategi..."):
-                all_topics = [f"{st.session_state.topic_labels[idx]}: {', '.join([st.session_state.nama_fitur[i] for i in topic.argsort()[-5:][::-1]])}" for idx, topic in enumerate(st.session_state.lda_components)]
-                
-                topics_string = "\n".join(all_topics)
-                insight = generate_ai_insight(st.session_state.game_name, topics_string, st.session_state.review_type, st.session_state.app_id)
-                
-                with st.container(border=True):
-                    st.markdown(insight)
+        
+        # Cek apakah AI sudah pernah generate insight sebelumnya
+        if st.session_state.get('ai_insight_text') is None:
+            if st.button("✨ Generate Analisis Mendalam", type="primary"):
+                with st.spinner("AI sedang memformulasikan strategi... (Hemat Token Mode)"):
+                    all_topics = [f"{st.session_state.topic_labels[idx]}: {', '.join([st.session_state.nama_fitur[i] for i in topic.argsort()[-5:][::-1]])}" for idx, topic in enumerate(st.session_state.lda_components)]
+                    
+                    topics_string = "\n".join(all_topics)
+                    insight = generate_ai_insight(st.session_state.game_name, topics_string, st.session_state.review_type, st.session_state.app_id)
+                    
+                    # Simpan hasilnya ke memori agar tidak request ulang!
+                    st.session_state.ai_insight_text = insight
+                    st.rerun() # Refresh layar untuk menampilkan hasil
+        
+        # Jika hasil sudah ada di memori, tampilkan langsung (Bebas Kuota!)
+        if st.session_state.get('ai_insight_text') is not None:
+            with st.container(border=True):
+                st.markdown(st.session_state.ai_insight_text)
+            
+            # Tombol opsional jika pengguna ingin generate ulang (karena sebelumnya error limit)
+            if st.button("🔄 Generate Ulang (Gunakan Kuota AI)"):
+                st.session_state.ai_insight_text = None
+                st.rerun()
 
     with tab3:
         st.subheader("Tabel Data Ulasan")
