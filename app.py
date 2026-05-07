@@ -170,29 +170,40 @@ if st.session_state.data_diproses:
         )
 
 # --- GANTI ISI TAB 2 DI APP.PY MENJADI INI ---
+# --- GANTI SELURUH ISI TAB 2 DI app.py MENJADI INI ---
     with tab2:
         st.subheader("Saran Strategis dari AI")
         
         # Cek apakah AI sudah pernah generate insight sebelumnya
         if st.session_state.get('ai_insight_text') is None:
             if st.button("✨ Generate Analisis Mendalam", type="primary"):
-                with st.spinner("AI sedang memformulasikan strategi... (Hemat Token Mode)"):
+                with st.spinner("AI sedang memformulasikan strategi..."):
                     all_topics = [f"{st.session_state.topic_labels[idx]}: {', '.join([st.session_state.nama_fitur[i] for i in topic.argsort()[-5:][::-1]])}" for idx, topic in enumerate(st.session_state.lda_components)]
                     
                     topics_string = "\n".join(all_topics)
                     insight = generate_ai_insight(st.session_state.game_name, topics_string, st.session_state.review_type, st.session_state.app_id)
                     
-                    # Simpan hasilnya ke memori agar tidak request ulang!
+                    # Simpan hasil ke memori
                     st.session_state.ai_insight_text = insight
-                    st.rerun() # Refresh layar untuk menampilkan hasil
+                    st.rerun() # Refresh layar
         
-        # Jika hasil sudah ada di memori, tampilkan langsung (Bebas Kuota!)
+        # Jika hasil sudah ada di memori
         if st.session_state.get('ai_insight_text') is not None:
-            with st.container(border=True):
-                st.markdown(st.session_state.ai_insight_text)
+            hasil_ai = st.session_state.ai_insight_text
             
-            # Tombol opsional jika pengguna ingin generate ulang (karena sebelumnya error limit)
-            if st.button("🔄 Generate Ulang (Gunakan Kuota AI)"):
+            # CEK APAKAH HASILNYA ADALAH ERROR ATAU ANALISIS ASLI
+            if hasil_ai == "LIMIT_ERROR":
+                st.warning("⏳ **Ups! Server AI Sedang Sibuk (Limit Tercapai)**\n\nKuota penggunaan AI gratis dari Google sedang penuh karena terlalu banyak request. Jangan khawatir, silakan tunggu sekitar **1-2 Menit**, lalu coba klik tombol generate ulang di bawah.")
+            elif hasil_ai == "API_ERROR" or hasil_ai == "GENERAL_ERROR":
+                st.error("⚠️ **Gagal terhubung ke Google AI.** Pastikan API Key valid atau coba lagi beberapa saat.")
+            else:
+                # JIKA BERHASIL, TAMPILKAN DI DALAM KOTAK
+                with st.container(border=True):
+                    st.markdown(hasil_ai)
+            
+            # Tombol Generate Ulang
+            st.write("") # Spasi
+            if st.button("🔄 Coba Generate Ulang"):
                 st.session_state.ai_insight_text = None
                 st.rerun()
 
