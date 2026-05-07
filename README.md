@@ -69,6 +69,7 @@ Alih-alih membaca feedback secara manual, aplikasi ini menggunakan **Natural Lan
    streamlit run app.py
 
 📂 Project Structure
+
 📦 steam-review-ai-analyzer
  ┣ 📜 app.py               # Main Streamlit application and UI layout
  ┣ 📜 scraper.py           # Handles communication with the Steam Store API
@@ -76,6 +77,8 @@ Alih-alih membaca feedback secara manual, aplikasi ini menggunakan **Natural Lan
  ┣ 📜 ai_helper.py         # Google Gemini integration, Prompt Engineering & Fallback logic
  ┣ 📜 requirements.txt     # List of required Python packages
  ┗ 📜 README.md            # Project documentation
+ 
+
 
  📸 Screenshots
 <img width="1918" height="965" alt="image" src="https://github.com/user-attachments/assets/e9732f18-0e02-4a7c-beba-00b96a2f9724" />
