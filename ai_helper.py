@@ -17,7 +17,7 @@ def generate_ai_insight(game_name, topics_list, review_type, app_id):
     
     genai.configure(api_key=API_KEY)
     # Menggunakan Gemini 1.5 Flash (Model terbaru & lebih cerdas dari 2.5 flash yang belum stabil)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
     prompt = f"""
     Anda adalah seorang Lead Game Analyst. 
