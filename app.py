@@ -3,14 +3,14 @@ import streamlit as st
 import pandas as pd
 import math
 import io
-import requests # <--- IMPORT BARU UNTUK MENGAMBIL GAMBAR STEAM
+import requests
 import matplotlib.pyplot as plt
 
 from scraper import crawl_steam
 from nlp_core import clean_text, run_topic_modeling
 from ai_helper import generate_ai_insight, generate_topic_labels_with_ai 
 
-# --- FUNGSI BARU UNTUK MENGAMBIL INFO GAME DARI STEAM ---
+# --- FUNGSI MENGAMBIL INFO GAME DARI STEAM ---
 @st.cache_data
 def get_game_info(app_id):
     url = f"https://store.steampowered.com/api/appdetails?appids={app_id}"
@@ -21,7 +21,6 @@ def get_game_info(app_id):
             return data['name'], data['header_image']
     except Exception:
         pass
-    # Fallback jika gagal/App ID salah
     return "Unknown Game", "https://community.akamai.steamstatic.com/public/shared/images/header/globalheader_logo.png"
 
 # --- 1. PAGE CONFIG & CUSTOM CSS ---
@@ -32,7 +31,7 @@ st.markdown("""
     .main {background-color: #0E1117;}
     h1, h2, h3 {color: #00E5FF;}
     .stButton>button {
-        width: 100%; border-radius: 8px;
+        border-radius: 8px;
         background-color: #00E5FF; color: #0E1117; font-weight: bold;
     }
     .stButton>button:hover {background-color: #00B3CC; color: white;}
@@ -49,7 +48,7 @@ with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg", width=60)
     st.title("⚙️ Konfigurasi")
     
-    app_id = st.text_input("Steam App ID", value="3551340", help="Contoh: 3551340 (Football manager 26)")
+    app_id = st.text_input("Steam App ID", value="3551340", help="Contoh: 3551340 (Marvel Rivals)")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -63,7 +62,7 @@ with st.sidebar:
         min_df_val = st.number_input("Min Document Frequency", value=5)
         max_df_val = st.slider("Max Document Frequency", 0.5, 1.0, 0.85)
         
-    btn_proses = st.button("🚀 Mulai Analisis Data")
+    btn_proses = st.button("🚀 Mulai Analisis Data", use_container_width=True)
 
 # --- 4. TAMPILAN UTAMA (HEADER) ---
 st.title("🎮 Steam Review AI Analytics")
@@ -74,34 +73,30 @@ st.divider()
 if btn_proses:
     try:
         with st.status("Memproses Data Steam...", expanded=True) as status:
-            # 1. Mengambil Info Game (GAMBAR & NAMA)
             st.write("🌍 Mengambil metadata game...")
             g_name, g_image = get_game_info(app_id)
 
-            # 2. Mengambil Ulasan
             st.write("⬇️ Mengunduh ulasan dari Steam...")
             df_raw = crawl_steam(app_id, review_type, language)
             
-            # 3. NLP
             st.write("🔄 Membersihkan teks & Tokenisasi...")
             df_clean = clean_text(df_raw)
             
-            # 4. LDA Topic Modeling
             st.write("🧠 Melatih Model Topic Modeling (LDA)...")
             lda_components, nama_fitur = run_topic_modeling(df_clean, num_topics, min_df_val, max_df_val)
             
-            # 5. Label AI
             st.write("🤖 AI sedang membaca konteks & memberi nama topik...")
             topics_for_ai = {idx + 1: [nama_fitur[i] for i in topic.argsort()[-8:][::-1]] for idx, topic in enumerate(lda_components)}
             ai_labels = generate_topic_labels_with_ai(g_name, topics_for_ai, language)
             
             status.update(label="Analisis Selesai!", state="complete", expanded=False)
             
-            # SIMPAN SEMUA KE STATE (TERMASUK NAMA & GAMBAR)
+            # --- PERBAIKAN ERROR DI SINI: MENAMBAHKAN 'language' ---
             st.session_state.update({
-                'game_name': g_name, 'game_image': g_image, # INFO GAME BARU
+                'game_name': g_name, 'game_image': g_image,
                 'df_raw': df_raw, 'df_clean': df_clean, 'lda_components': lda_components,
                 'nama_fitur': nama_fitur, 'app_id': app_id, 'review_type': review_type,
+                'language': language,  # <--- Ini yang sebelumnya tertinggal
                 'num_topics': num_topics, 'topic_labels': ai_labels, 'data_diproses': True
             })
             
@@ -111,22 +106,20 @@ if btn_proses:
 # --- 6. MENAMPILKAN HASIL (UI MODERN TABS) ---
 if st.session_state.data_diproses:
     
-    # --- UI BARU: MENAMPILKAN PROFIL GAME ---
     with st.container(border=True):
         col_img, col_info = st.columns([1, 3])
         with col_img:
-            st.image(st.session_state.game_image, use_container_width=True)
+            # Menggunakan format standar agar bebas warning
+            st.image(st.session_state.game_image)
         with col_info:
             st.subheader(f"📊 Analisis Game: {st.session_state.game_name}")
             st.write(f"**App ID:** `{st.session_state.app_id}` | **Tipe Ulasan:** `{st.session_state.review_type.upper()}` | **Bahasa:** `{st.session_state.language.title()}`")
             st.write(f"Berhasil memproses **{len(st.session_state.df_clean)}** ulasan pemain.")
             
-    st.write("") # Spasi kosong
+    st.write("") 
     
-    # MEMBUAT TABS
     tab1, tab2, tab3 = st.tabs(["📊 Dashboard Topik", "🤖 AI Strategist", "📂 Database Ulasan"])
 
-    # TAB 1: VISUALISASI & KATA KUNCI
     with tab1:
         st.subheader("Distribusi Topik Pembicaraan")
         col_topics = st.columns(math.ceil(st.session_state.num_topics / 2))
@@ -173,14 +166,12 @@ if st.session_state.data_diproses:
             label="🖼️ Download Grafik (PNG)",
             data=byte_im,
             file_name=f"visualisasi_topik_{st.session_state.app_id}.png",
-            mime="image/png",
-            use_container_width=True
+            mime="image/png"
         )
 
-    # TAB 2: AI INSIGHT
     with tab2:
         st.subheader("Saran Strategis dari AI")
-        if st.button("✨ Generate Analisis Mendalam", type="primary", use_container_width=True):
+        if st.button("✨ Generate Analisis Mendalam", type="primary"):
             with st.spinner("AI sedang memformulasikan strategi..."):
                 all_topics = [f"{st.session_state.topic_labels[idx]}: {', '.join([st.session_state.nama_fitur[i] for i in topic.argsort()[-5:][::-1]])}" for idx, topic in enumerate(st.session_state.lda_components)]
                 
@@ -190,13 +181,12 @@ if st.session_state.data_diproses:
                 with st.container(border=True):
                     st.markdown(insight)
 
-    # TAB 3: DATA RAW & DOWNLOAD
     with tab3:
         st.subheader("Tabel Data Ulasan")
-        st.dataframe(st.session_state.df_clean[['Review_ID', 'Playtime_Minutes', 'Review_Text', 'Cleaned_Review']], use_container_width=True)
+        st.dataframe(st.session_state.df_clean[['Review_ID', 'Playtime_Minutes', 'Review_Text', 'Cleaned_Review']])
         
         col1, col2 = st.columns(2)
         with col1:
-            st.download_button("📥 Download Raw CSV", st.session_state.df_raw.to_csv(index=False).encode('utf-8'), f"raw_{st.session_state.app_id}.csv", "text/csv", use_container_width=True)
+            st.download_button("📥 Download Raw CSV", st.session_state.df_raw.to_csv(index=False).encode('utf-8'), f"raw_{st.session_state.app_id}.csv", "text/csv")
         with col2:
-            st.download_button("📥 Download Clean CSV", st.session_state.df_clean.to_csv(index=False).encode('utf-8'), f"clean_{st.session_state.app_id}.csv", "text/csv", use_container_width=True)
+            st.download_button("📥 Download Clean CSV", st.session_state.df_clean.to_csv(index=False).encode('utf-8'), f"clean_{st.session_state.app_id}.csv", "text/csv")
