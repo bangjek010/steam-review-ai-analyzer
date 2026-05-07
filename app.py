@@ -85,7 +85,7 @@ if btn_proses:
     except Exception as e:
         st.error(f"Terjadi kesalahan: {e}")
 
-# TAB 1: VISUALISASI & KATA KUNCI
+    # TAB 1: VISUALISASI & KATA KUNCI
     with tab1:
         st.subheader("Distribusi Topik Pembicaraan")
         col_topics = st.columns(math.ceil(st.session_state.num_topics / 2))
