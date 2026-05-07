@@ -48,7 +48,7 @@ with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg", width=60)
     st.title("⚙️ Konfigurasi")
     
-    app_id = st.text_input("Steam App ID", value="3551340", help="Contoh: 3551340 (Marvel Rivals)")
+    app_id = st.text_input("Steam App ID", value="3551340", help="Contoh: 3551340 (Football Manager 26)")
     
     col1, col2 = st.columns(2)
     with col1:
