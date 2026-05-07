@@ -79,7 +79,15 @@ Alih-alih membaca feedback secara manual, aplikasi ini menggunakan **Natural Lan
 📝 License
 Distributed under the MIT License. See LICENSE for more information.
 
-Created by Dzakwan Rafi
-https://github.com/bangjek010
+---
+
+## 👤 Connect with Me
+
+Dibuat dengan ☕ oleh **Dzakwan Rafi**
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/bangjek010)
+[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/dzkwanrf)
+
+---
 
 
