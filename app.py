@@ -85,6 +85,13 @@ if btn_proses:
     except Exception as e:
         st.error(f"Terjadi kesalahan: {e}")
 
+# --- 6. MENAMPILKAN HASIL (UI MODERN TABS) ---
+# Bagian ini sejajar (tidak masuk ke dalam if btn_proses)
+if st.session_state.data_diproses:
+    
+    # ⚠️ INI BARIS YANG HILANG SEBELUMNYA (PEMBUATAN TAB)
+    tab1, tab2, tab3 = st.tabs(["📊 Dashboard Topik", "🤖 AI Strategist", "📂 Database Ulasan"])
+
     # TAB 1: VISUALISASI & KATA KUNCI
     with tab1:
         st.subheader("Distribusi Topik Pembicaraan")
@@ -130,7 +137,6 @@ if btn_proses:
 
         # 2. FITUR BARU: Menyimpan grafik ke dalam memori (Buffer)
         buf = io.BytesIO()
-        # Menyimpan dengan warna background gelap agar sesuai tema
         fig.savefig(buf, format="png", bbox_inches='tight', facecolor='#0E1117')
         byte_im = buf.getvalue()
 
@@ -140,12 +146,13 @@ if btn_proses:
             data=byte_im,
             file_name=f"visualisasi_topik_app_{st.session_state.app_id}.png",
             mime="image/png",
+            use_container_width=True
         )
 
     # TAB 2: AI INSIGHT (CHATGPT/GEMINI STYLE)
     with tab2:
         st.subheader("Saran Strategis dari AI")
-        if st.button("✨ Generate Analisis Mendalam", type="primary"):
+        if st.button("✨ Generate Analisis Mendalam", type="primary", use_container_width=True):
             with st.spinner("AI sedang memformulasikan strategi..."):
                 all_topics = [f"{st.session_state.topic_labels[idx]}: {', '.join([st.session_state.nama_fitur[i] for i in topic.argsort()[-5:][::-1]])}" for idx, topic in enumerate(st.session_state.lda_components)]
                 insight = generate_ai_insight("\n".join(all_topics), st.session_state.review_type, st.session_state.app_id)
@@ -160,6 +167,6 @@ if btn_proses:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.download_button("📥 Download Raw CSV", st.session_state.df_raw.to_csv(index=False).encode('utf-8'), f"raw_{st.session_state.app_id}.csv", "text/csv")
+            st.download_button("📥 Download Raw CSV", st.session_state.df_raw.to_csv(index=False).encode('utf-8'), f"raw_{st.session_state.app_id}.csv", "text/csv", use_container_width=True)
         with col2:
-            st.download_button("📥 Download Clean CSV", st.session_state.df_clean.to_csv(index=False).encode('utf-8'), f"clean_{st.session_state.app_id}.csv", "text/csv")
+            st.download_button("📥 Download Clean CSV", st.session_state.df_clean.to_csv(index=False).encode('utf-8'), f"clean_{st.session_state.app_id}.csv", "text/csv", use_container_width=True)
