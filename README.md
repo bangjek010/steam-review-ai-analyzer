@@ -46,12 +46,12 @@ Alih-alih membaca feedback secara manual, aplikasi ini menggunakan **Natural Lan
 
 2. **Create a Virtual Environment (Recommended)**
    ```bash
-  python -m venv venv
-  source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+     python -m venv venv
+     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 
 3. **Install Dependencies**
    ```bash
-  pip install -r requirements.txt
+     pip install -r requirements.txt
 
 4. **Setup Google Gemini API Key**
    This app requires a free Google Gemini API key to run the AI features.
