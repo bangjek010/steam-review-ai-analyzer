@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import math
+import io
 import matplotlib.pyplot as plt
 
 from scraper import crawl_steam
@@ -84,15 +85,10 @@ if btn_proses:
     except Exception as e:
         st.error(f"Terjadi kesalahan: {e}")
 
-# --- 6. MENAMPILKAN HASIL DENGAN UI MODERN (TABS) ---
-if st.session_state.data_diproses:
-    # Membagi konten menjadi 3 Tabs agar tidak menumpuk ke bawah
-    tab1, tab2, tab3 = st.tabs(["📊 Dashboard Topik", "🤖 AI Strategist", "📂 Database Ulasan"])
-    
-    # TAB 1: VISUALISASI & KATA KUNCI
+# TAB 1: VISUALISASI & KATA KUNCI
     with tab1:
         st.subheader("Distribusi Topik Pembicaraan")
-        col_topics = st.columns(math.ceil(st.session_state.num_topics / 2)) # Dynamic columns
+        col_topics = st.columns(math.ceil(st.session_state.num_topics / 2))
         
         # Menampilkan Card Topik
         for idx, topic in enumerate(st.session_state.lda_components):
@@ -124,9 +120,27 @@ if st.session_state.data_diproses:
             ax.tick_params(colors='white')
             ax.invert_yaxis()
 
-        for j in range(i + 1, len(axes_flat)): fig.delaxes(axes_flat[j])
+        for j in range(i + 1, len(axes_flat)): 
+            fig.delaxes(axes_flat[j])
+            
         plt.tight_layout()
+        
+        # 1. Tampilkan Grafik di Web
         st.pyplot(fig)
+
+        # 2. FITUR BARU: Menyimpan grafik ke dalam memori (Buffer)
+        buf = io.BytesIO()
+        # Menyimpan dengan warna background gelap agar sesuai tema
+        fig.savefig(buf, format="png", bbox_inches='tight', facecolor='#0E1117')
+        byte_im = buf.getvalue()
+
+        # 3. Tampilkan Tombol Download
+        st.download_button(
+            label="🖼️ Download Grafik (PNG)",
+            data=byte_im,
+            file_name=f"visualisasi_topik_app_{st.session_state.app_id}.png",
+            mime="image/png",
+        )
 
     # TAB 2: AI INSIGHT (CHATGPT/GEMINI STYLE)
     with tab2:
