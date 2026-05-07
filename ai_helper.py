@@ -79,6 +79,3 @@ def generate_topic_labels_with_ai(game_name, topics_dict, language):
         return labels
     except Exception:
         return [f"Topik {i+1}" for i in range(len(topics_dict))]
-
-
-bisa ga sih ketika model ini limit, dia akan menggunakan model yang lain nya
