@@ -49,7 +49,7 @@ def generate_topic_labels_with_ai(game_name, topics_dict, language):
     if not API_KEY: return [f"Topik {i+1}" for i in range(len(topics_dict))]
     
     genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
     formatted_topics = "\n".join([f"Topik {k}: {', '.join(v)}" for k, v in topics_dict.items()])
 
