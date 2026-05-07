@@ -93,7 +93,7 @@ if btn_proses:
             # 5. Label AI
             st.write("🤖 AI sedang membaca konteks & memberi nama topik...")
             topics_for_ai = {idx + 1: [nama_fitur[i] for i in topic.argsort()[-8:][::-1]] for idx, topic in enumerate(lda_components)}
-            ai_labels = generate_topic_labels_with_ai(topics_for_ai, language)
+            ai_labels = generate_topic_labels_with_ai(g_name, topics_for_ai, language)
             
             status.update(label="Analisis Selesai!", state="complete", expanded=False)
             
@@ -184,10 +184,8 @@ if st.session_state.data_diproses:
             with st.spinner("AI sedang memformulasikan strategi..."):
                 all_topics = [f"{st.session_state.topic_labels[idx]}: {', '.join([st.session_state.nama_fitur[i] for i in topic.argsort()[-5:][::-1]])}" for idx, topic in enumerate(st.session_state.lda_components)]
                 
-                # SEKARANG KITA MEMBERITAHU NAMA GAMENYA KE AI!
-                prompt_untuk_ai = f"NAMA GAME: {st.session_state.game_name}\n\nTOPIK:\n" + "\n".join(all_topics)
-                
-                insight = generate_ai_insight(prompt_untuk_ai, st.session_state.review_type, st.session_state.app_id)
+                topics_string = "\n".join(all_topics)
+                insight = generate_ai_insight(st.session_state.game_name, topics_string, st.session_state.review_type, st.session_state.app_id)
                 
                 with st.container(border=True):
                     st.markdown(insight)
