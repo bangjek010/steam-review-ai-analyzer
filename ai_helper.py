@@ -64,10 +64,9 @@ def generate_topic_labels_with_ai(game_name, topics_dict, language):
     Include 1 relevant emoji at the beginning of the title.
     If language is 'indonesian', write titles in Indonesian. If 'english', write in English.
 
-    OUTPUT FORMAT STRICTLY LIKE THIS (Do not add any other text):
-    1| 🛠️ Title Here
-    2| 🎨 Title Here
-    3| ⚽ Title Here
+    OUTPUT FORMAT STRICTLY LIKE THIS EXAMPLE (Do not add any other text):
+    Topik 1: 🎮 Fitur Gameplay
+    Topik 2: 🛠️ Masalah Server
     """
 
     try:
