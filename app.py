@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import math
 import matplotlib.pyplot as plt
@@ -913,56 +914,6 @@ if st.session_state.data_diproses:
 elif not btn_proses:
     st.info("👈 Silakan atur konfigurasi di sebelah kiri, lalu klik tombol 'Mulai Analisis' untuk memulai analisis baru.")
     
-    # Inject JavaScript untuk deteksi owner (tombol Manage app / localhost) secara dinamis
-    st.markdown("""
-    <script>
-    function checkOwnerAndToggleDelete() {
-        let isOwner = false;
-        
-        // 1. Cek jika berjalan secara lokal
-        const hostname = window.location.hostname;
-        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '') {
-            isOwner = true;
-        }
-        
-        // 2. Cek tombol "Manage app" di parent window (Streamlit Cloud Toolbar)
-        if (!isOwner) {
-            try {
-                if (window.parent && window.parent.document && window.parent.document.querySelector('[data-testid="manage-app-button"]')) {
-                    isOwner = true;
-                }
-            } catch(e) {}
-        }
-        
-        // 3. Cek tombol "Manage app" di document saat ini
-        if (!isOwner) {
-            try {
-                if (document.querySelector('[data-testid="manage-app-button"]')) {
-                    isOwner = true;
-                }
-            } catch(e) {}
-        }
-        
-        // Jika bukan owner, sembunyikan kolom tombol Hapus (🗑️) dan rentangkan tombol Muat
-        if (!isOwner) {
-            document.querySelectorAll('[data-testid="column"]').forEach(col => {
-                const deleteBtn = col.querySelector('button');
-                if (deleteBtn && deleteBtn.innerText && deleteBtn.innerText.includes('🗑️')) {
-                    col.style.display = 'none';
-                    const prevCol = col.previousElementSibling;
-                    if (prevCol) {
-                        prevCol.style.width = '100%';
-                        prevCol.style.flex = '1 1 100%';
-                    }
-                }
-            });
-        }
-    }
-    // Cek berkala setiap 300ms untuk menangani render dinamis Streamlit
-    setInterval(checkOwnerAndToggleDelete, 300);
-    </script>
-    """, unsafe_allow_html=True)
-    
     st.markdown("---")
     st.subheader("📂 Riwayat Analisis Tersimpan")
     
@@ -995,9 +946,34 @@ elif not btn_proses:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Tombol Aksi (Muat / Hapus) - JS akan otomatis menyembunyikan Hapus jika bukan Owner
-                    col_btn1, col_btn2 = st.columns([2, 1])
-                    with col_btn1:
+                    # Tombol Aksi (Muat / Hapus) - Menggunakan server-side check agar 100% aman dari Same-Origin Policy
+                    is_owner = check_is_owner()
+                    if is_owner:
+                        col_btn1, col_btn2 = st.columns([2, 1])
+                        with col_btn1:
+                            if st.button("📂 Muat Analisis", key=f"load_card_{opt['dir_name']}", use_container_width=True):
+                                with st.spinner("Memuat analisis..."):
+                                    if load_saved_analysis_from_disk(opt["dir_name"], opt["params"]):
+                                        st.success(f"Analisis untuk {opt['game_name']} berhasil dimuat!")
+                                        if hasattr(st, "rerun"):
+                                            st.rerun()
+                                        else:
+                                            st.experimental_rerun()
+                                    else:
+                                        st.error("Gagal memuat analisis.")
+                        with col_btn2:
+                            if st.button("🗑️", key=f"delete_card_{opt['dir_name']}", use_container_width=True, help="Hapus analisis ini dari riwayat"):
+                                import shutil
+                                cache_dir = os.path.join("data", "analysis_results", opt["dir_name"])
+                                try:
+                                    shutil.rmtree(cache_dir)
+                                    if hasattr(st, "rerun"):
+                                        st.rerun()
+                                    else:
+                                        st.experimental_rerun()
+                                except Exception as e:
+                                    st.error(f"Gagal: {e}")
+                    else:
                         if st.button("📂 Muat Analisis", key=f"load_card_{opt['dir_name']}", use_container_width=True):
                             with st.spinner("Memuat analisis..."):
                                 if load_saved_analysis_from_disk(opt["dir_name"], opt["params"]):
@@ -1008,17 +984,5 @@ elif not btn_proses:
                                         st.experimental_rerun()
                                 else:
                                     st.error("Gagal memuat analisis.")
-                    with col_btn2:
-                        if st.button("🗑️", key=f"delete_card_{opt['dir_name']}", use_container_width=True, help="Hapus analisis ini dari riwayat"):
-                            import shutil
-                            cache_dir = os.path.join("data", "analysis_results", opt["dir_name"])
-                            try:
-                                shutil.rmtree(cache_dir)
-                                if hasattr(st, "rerun"):
-                                    st.rerun()
-                                else:
-                                    st.experimental_rerun()
-                            except Exception as e:
-                                st.error(f"Gagal: {e}")
     else:
         st.markdown("*Belum ada riwayat analisis yang tersimpan. Silakan lakukan analisis pertama Anda di sebelah kiri.*")
