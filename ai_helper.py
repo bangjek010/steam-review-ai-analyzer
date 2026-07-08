@@ -15,13 +15,13 @@ def get_api_key():
     if env_key:
         return env_key
         
-    # Return None agar aman (tidak membocorkan API key di Github)
     return None
 
 def generate_ai_insight(topics_list, review_type, app_id):
     API_KEY = get_api_key()
-    if not API_KEY:
+    if not API_KEY: 
         return "Gagal memuat AI Insight: API Key tidak ditemukan. Silakan konfigurasi GEMINI_API_KEY di Streamlit Secrets."
+
         
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-2.5-flash')
