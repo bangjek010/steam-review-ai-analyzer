@@ -196,34 +196,18 @@ def load_saved_analysis_from_disk(dir_name, p):
 
 def check_is_owner():
     try:
-        owner_email = None
+        entered_password = st.session_state.get("admin_password_input", "")
+        owner_pwd = "admin123"
         try:
-            if "OWNER_EMAIL" in st.secrets:
-                owner_email = st.secrets["OWNER_EMAIL"]
+            if "OWNER_PASSWORD" in st.secrets:
+                owner_pwd = st.secrets["OWNER_PASSWORD"]
         except Exception:
             pass
-
-        user_info = None
-        if hasattr(st, "user") and st.user:
-            user_info = st.user
-        elif hasattr(st, "experimental_user") and st.experimental_user:
-            user_info = st.experimental_user
             
-        email_user = getattr(user_info, "email", None) if user_info else None
-        
-        # Deteksi apakah berjalan di Streamlit Cloud secara 100% akurat
-        # Streamlit Cloud meng-clone kode di path /mount/src/nama-repo/
-        import os
-        abs_path = os.path.abspath(__file__)
-        is_cloud = "/mount/src/" in abs_path or "STREAMLIT_SERVER_PORT" in os.environ
-        
-        if is_cloud:
-            if owner_email and email_user:
-                return email_user == owner_email
-            return False
+        return entered_password == owner_pwd
     except Exception:
         pass
-    return True
+    return False
 
 
 
@@ -452,6 +436,11 @@ max_df_val = st.sidebar.slider("Max Document Frequency (max_df)", 0.5, 1.0, floa
 overwrite_analysis = st.sidebar.checkbox("Overwrite Analisis Sebelumnya", value=False)
 
 btn_proses = st.sidebar.button("🚀 Mulai Analisis")
+
+# Area Owner untuk Mode Admin/Hapus
+st.sidebar.markdown("---")
+with st.sidebar.expander("🔑 Area Owner (Hapus Data)"):
+    st.text_input("Password Admin", type="password", key="admin_password_input")
 
 
 saved_analyses = get_saved_analyses(app_id)
