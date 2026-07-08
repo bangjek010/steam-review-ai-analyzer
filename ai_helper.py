@@ -1,115 +1,107 @@
-# --- ai_helper.py ---
 import google.generativeai as genai
 import streamlit as st
+import os
 
 def get_api_key():
     try:
-        return st.secrets["GEMINI_API_KEY"]
+        # Coba ambil dari Streamlit secrets
+        if "GEMINI_API_KEY" in st.secrets:
+            return st.secrets["GEMINI_API_KEY"]
     except Exception:
-        return None
+        pass
+    
+    # Coba ambil dari Environment Variable
+    env_key = os.environ.get("GEMINI_API_KEY")
+    if env_key:
+        return env_key
+        
+    # Fallback ke key default
+    return "AIzaSyBBYQQ7n5PCv1VlHTnvX_Nkg4kNZ8Tb2iw"
 
-def generate_ai_insight(game_name, topics_list, review_type, app_id):
+def generate_ai_insight(topics_list, review_type, app_id):
     API_KEY = get_api_key()
-    if not API_KEY: return "Gagal: API Key tidak ada."
-    
     genai.configure(api_key=API_KEY)
-    
-    # 🌟 SISTEM KASTA: Jika model atas limit (429), otomatis turun ke model bawahnya
-    daftar_model = [
-        'gemini-2.5-flash',       # Pintar, tapi limit harian cuma 20
-        'gemini-3.1-flash-lite',  # Penyelamat! Limit harian 500
-        'gemini-3-flash'          # Cadangan terakhir
-    ]
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
     prompt = f"""
-    Anda adalah seorang Lead Game Analyst. 
-    Tugas Anda adalah menganalisis ulasan pemain untuk game: **{game_name}** (Steam App ID: {app_id}).
-    Sentimen ulasan yang sedang Anda analisis saat ini adalah ulasan '{review_type}'. 
+    Anda adalah seorang Analis Game Profesional. 
+    Saat ini Anda sedang menganalisis ulasan untuk sebuah game di Steam. 
+    Referensi URL game tersebut adalah: https://store.steampowered.com/app/{app_id}
 
-    Berikut adalah hasil klastering Machine Learning (Topik & Kata Kunci) dari ribuan ulasan pemain:
+    Berdasarkan hasil ekstraksi topik dari ulasan yang bertipe '{review_type}', 
+    berikut adalah topik dan kata kunci utama yang sedang ramai dibicarakan pemain:
     {topics_list}
 
     INSTRUKSI PENTING:
-    Hubungkan kata kunci di atas dengan konteks genre dan fitur asli dari game {game_name}. JANGAN berhalusinasi.
-
-    Buatlah laporan analisis strategis dengan format markdown berikut:
-    1. 🎯 **Ringkasan Sentimen {game_name}:** Jelaskan secara spesifik poin utama pemain.
-    2. 💡 **3 Rekomendasi Prioritas untuk Developer:** Langkah konkret minggu ini.
-    3. 📊 **Akar Masalah / Kekuatan Utama:** Analisis apakah dominan teknis, UI/UX, gameplay, atau monetisasi.
+    1. Coba kenali judul game ini berdasarkan URL dan kata kunci ulasan di atas (contoh: jika kata kuncinya seputar 'tactic', 'football', 'manager', ini pasti Football Manager). 
+    2. JANGAN MENGARANG (halusinasi) nama game jika Anda tidak yakin 100%. Jika ragu, cukup sebutkan genre game-nya saja berdasarkan kata kunci.
     
-    Gunakan bahasa Indonesia yang profesional, tajam, namun mudah dipahami.
+    Tolong berikan laporan analisis dengan format berikut:
+    1. 🎯 **Ringkasan Sentimen:** Sebutkan nama gamenya (jika tahu), lalu jelaskan apa yang sebenarnya dirasakan pemain.
+    2. 💡 **3 Saran Konkret untuk Developer (Improvement Priority):** Apa yang harus diperbaiki minggu ini juga berdasarkan topik di atas?
+    3. 📊 **Akar Masalah:** Analisis apakah ini murni masalah teknis (bug/crash), desain UI/UX, fundamental gameplay, atau kebijakan monetisasi.
+    
+    Gunakan bahasa Indonesia yang profesional, tajam, namun tetap santai.
     """
     
-    # Mencoba model satu per satu
-    for nama_model in daftar_model:
-        try:
-            model = genai.GenerativeModel(nama_model)
-            response = model.generate_content(prompt)
-            return response.text # Jika berhasil, langsung kembalikan hasil
-        except Exception as e:
-            error_msg = str(e).lower()
-            # Jika Error karena kuota habis (429), Lanjut coba model berikutnya!
-            if "429" in error_msg or "quota" in error_msg:
-                continue
-            
-    # Jika semua model di daftar sudah dicoba dan tetap gagal
-    return "⚠️ Server AI sedang penuh. Silakan coba beberapa saat lagi."
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Gagal memuat AI Insight: {e}"
 
-def generate_topic_labels_with_ai(game_name, topics_dict, language):
+
+# --- FUNGSI BARU UNTUK MEMBERI NAMA TOPIK ---
+def generate_topic_labels_with_ai(topics_dict, language):
     API_KEY = get_api_key()
-    if not API_KEY: return [f"Topik {i+1}" for i in range(len(topics_dict))]
-    
     genai.configure(api_key=API_KEY)
-    
-    # 🌟 SISTEM KASTA UNTUK LABEL TOPIK
-    daftar_model = [
-        'gemini-2.5-flash',
-        'gemini-3.1-flash-lite'
-    ]
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
+    # Format kata kunci agar mudah dibaca AI
     formatted_topics = "\n".join([f"Topik {k}: {', '.join(v)}" for k, v in topics_dict.items()])
 
     prompt = f"""
-    Berikan judul kategori singkat (maks 3 kata) untuk Topik ulasan game "{game_name}".
-    Bahasa: {language}.
+    Act as a Professional Data Analyst. I have LDA Topic Modeling results from game reviews.
+    The reviews are in this language: {language}.
 
-    Kata Kunci:
+    Here are the topics and their top keywords:
     {formatted_topics}
 
-    PILIH DARI KATEGORI BERIKUT: UI/UX, Gameplay, Server/Bug, Cerita, Audio, Komunitas, Visual, Monetisasi, Fitur Baru, atau Sentimen Umum.
-    Gunakan 1 Emoji di awal.
+    Task: Provide a very short, specific category title (max 4-5 words) for each topic based on the keywords. 
+    Include 1 relevant emoji at the beginning of the title.
+    If the language is 'indonesian', write the titles in Indonesian. If 'english', write in English.
 
-    FORMAT BALASAN WAJIB SEPERTI INI (Tanpa teks tambahan):
-    Topik 1: 🎮 Fitur Gameplay
-    Topik 2: 🛠️ Masalah Server
+    OUTPUT FORMAT STRICTLY LIKE THIS (Do not add any other text):
+    1| 🛠️ Title Here
+    2| 🎨 Title Here
+    3| ⚽ Title Here
     """
 
-    # FUNGSI PEMOTONG TEKS (SUDAH DIPERBAIKI)
-    def parse_labels(response_text):
-        clean_text = response_text.replace("```text", "").replace("```", "").strip()
-        lines = clean_text.split('\n')
+    try:
+        response = model.generate_content(prompt)
+        lines = response.text.strip().split('\n')
+        
         labels = []
         for line in lines:
-            # SEKARANG MENCARI TITIK DUA (:), BUKAN GARIS (|)
-            if "Topik" in line and ":" in line:
-                nama_topik = line.split(':', 1)[1].strip()
-                labels.append(nama_topik)
-        return labels
-
-    # Mencoba model satu per satu
-    for nama_model in daftar_model:
-        try:
-            model = genai.GenerativeModel(nama_model)
-            response = model.generate_content(prompt)
-            labels = parse_labels(response.text)
-            
-            # Pastikan jumlah label sama dengan jumlah topik
-            if len(labels) == len(topics_dict):
-                return labels
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "429" in error_msg or "quota" in error_msg:
-                continue # Lanjut ke model berikutnya jika limit
+            if '|' in line:
+                # Mengambil teks setelah tanda '|'
+                labels.append(line.split('|')[1].strip())
                 
-    # Jika gagal total, kembalikan ke nama default (Topik 1, Topik 2)
-    return [f"Topik {i+1}" for i in range(len(topics_dict))]
+        # Jika AI gagal mengikuti format, kembalikan nama default
+        if len(labels) != len(topics_dict):
+            return [f"Topik {i+1}" for i in range(len(topics_dict))]
+            
+        return labels
+    except Exception as e:
+        # Fallback jika error API
+        return [f"Topik {i+1}" for i in range(len(topics_dict))]
+
+def is_ai_connected():
+    API_KEY = get_api_key()
+    try:
+        genai.configure(api_key=API_KEY)
+        # Check connection by listing models (very fast and doesn't consume generation tokens)
+        next(iter(genai.list_models()))
+        return True
+    except Exception:
+        return False

@@ -6,3 +6,4 @@ scikit-learn
 matplotlib
 steamreviews
 requests
+wordcloud
