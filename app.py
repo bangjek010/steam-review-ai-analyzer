@@ -125,11 +125,22 @@ def get_all_saved_analyses():
                     except Exception:
                         pass
                 
+                # Dapatkan waktu analisis dari file modifikasi
+                analysis_time = "-"
+                if os.path.exists(json_path):
+                    try:
+                        import datetime
+                        mtime = os.path.getmtime(json_path)
+                        analysis_time = datetime.datetime.fromtimestamp(mtime).strftime('%d-%m-%Y %H:%M')
+                    except Exception:
+                        pass
+                
                 options.append({
                     "dir_name": f,
                     "game_name": game_name,
                     "game_image": game_image,
                     "total_reviews": total_reviews,
+                    "analysis_time": analysis_time,
                     "params": {
                         "app_id": app_id_val,
                         "review_type": rev_type_val,
@@ -184,21 +195,32 @@ def load_saved_analysis_from_disk(dir_name, p):
 
 def check_is_owner():
     try:
+        owner_email = None
+        try:
+            if "OWNER_EMAIL" in st.secrets:
+                owner_email = st.secrets["OWNER_EMAIL"]
+        except Exception:
+            pass
+
         user_info = None
         if hasattr(st, "user") and st.user:
             user_info = st.user
         elif hasattr(st, "experimental_user") and st.experimental_user:
             user_info = st.experimental_user
             
-        if user_info and getattr(user_info, "email", None):
-            email_user = user_info.email
-            owner_email = st.secrets.get("OWNER_EMAIL")
-            if owner_email:
+        email_user = getattr(user_info, "email", None) if user_info else None
+        
+        import os
+        is_cloud = "STREAMLIT_SERVER_PORT" in os.environ or os.environ.get("STREAMLIT_SERVER_PORT") is not None
+        
+        if is_cloud:
+            if owner_email and email_user:
                 return email_user == owner_email
             return False
     except Exception:
         pass
     return True
+
 
 
 
@@ -916,6 +938,10 @@ elif not btn_proses:
                         <br/>
                         <span class="stat-badge badge-type">{opt['params']['review_type'].upper()}</span>
                         <span class="stat-badge badge-lang">{opt['params']['language'].title()}</span>
+                        <br/>
+                        <span style="font-size: 11px; color: #64748b;"><b>min_df</b>: {opt['params']['min_df_val']} | <b>max_df</b>: {opt['params']['max_df_val']}</span>
+                        <br/>
+                        <span style="font-size: 11px; color: #94a3b8;">📅 {opt['analysis_time']}</span>
                     </div>
                     """, unsafe_allow_html=True)
                     
