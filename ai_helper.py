@@ -15,11 +15,14 @@ def get_api_key():
     if env_key:
         return env_key
         
-    # Fallback ke key default
-    return "AIzaSyBBYQQ7n5PCv1VlHTnvX_Nkg4kNZ8Tb2iw"
+    # Return None agar aman (tidak membocorkan API key di Github)
+    return None
 
 def generate_ai_insight(topics_list, review_type, app_id):
     API_KEY = get_api_key()
+    if not API_KEY:
+        return "Gagal memuat AI Insight: API Key tidak ditemukan. Silakan konfigurasi GEMINI_API_KEY di Streamlit Secrets."
+        
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-2.5-flash')
 
@@ -54,6 +57,9 @@ def generate_ai_insight(topics_list, review_type, app_id):
 # --- FUNGSI BARU UNTUK MEMBERI NAMA TOPIK ---
 def generate_topic_labels_with_ai(topics_dict, language):
     API_KEY = get_api_key()
+    if not API_KEY:
+        return [f"Topik {i+1}" for i in range(len(topics_dict))]
+        
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-2.5-flash')
 
@@ -98,6 +104,8 @@ def generate_topic_labels_with_ai(topics_dict, language):
 
 def is_ai_connected():
     API_KEY = get_api_key()
+    if not API_KEY:
+        return False
     try:
         genai.configure(api_key=API_KEY)
         # Check connection by listing models (very fast and doesn't consume generation tokens)
