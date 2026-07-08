@@ -211,8 +211,11 @@ def check_is_owner():
             
         email_user = getattr(user_info, "email", None) if user_info else None
         
+        # Deteksi apakah berjalan di Streamlit Cloud secara 100% akurat
+        # Streamlit Cloud meng-clone kode di path /mount/src/nama-repo/
         import os
-        is_cloud = "STREAMLIT_SERVER_PORT" in os.environ or os.environ.get("STREAMLIT_SERVER_PORT") is not None
+        abs_path = os.path.abspath(__file__)
+        is_cloud = "/mount/src/" in abs_path or "STREAMLIT_SERVER_PORT" in os.environ
         
         if is_cloud:
             if owner_email and email_user:
