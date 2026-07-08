@@ -180,8 +180,26 @@ def load_saved_analysis_from_disk(dir_name, p):
         
         st.session_state.cache_dir = cache_dir
         st.session_state.data_diproses = True
-        return True
     return False
+
+def check_is_owner():
+    try:
+        user_info = None
+        if hasattr(st, "user") and st.user:
+            user_info = st.user
+        elif hasattr(st, "experimental_user") and st.experimental_user:
+            user_info = st.experimental_user
+            
+        if user_info and getattr(user_info, "email", None):
+            email_user = user_info.email
+            owner_email = st.secrets.get("OWNER_EMAIL")
+            if owner_email:
+                return email_user == owner_email
+            return False
+    except Exception:
+        pass
+    return True
+
 
 
 
@@ -901,16 +919,43 @@ elif not btn_proses:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Tombol Muat Analisis
-                    if st.button("📂 Muat Analisis", key=f"load_card_{opt['dir_name']}", use_container_width=True):
-                        with st.spinner("Memuat analisis..."):
-                            if load_saved_analysis_from_disk(opt["dir_name"], opt["params"]):
-                                st.success(f"Analisis untuk {opt['game_name']} berhasil dimuat!")
-                                if hasattr(st, "rerun"):
-                                    st.rerun()
-                                else:
-                                    st.experimental_rerun()
-                            else:
-                                st.error("Gagal memuat analisis.")
+                    # Tombol Aksi (Muat / Hapus)
+                    is_owner = check_is_owner()
+                    if is_owner:
+                        col_btn1, col_btn2 = st.columns([2, 1])
+                        with col_btn1:
+                            if st.button("📂 Muat Analisis", key=f"load_card_{opt['dir_name']}", use_container_width=True):
+                                with st.spinner("Memuat analisis..."):
+                                    if load_saved_analysis_from_disk(opt["dir_name"], opt["params"]):
+                                        st.success(f"Analisis untuk {opt['game_name']} berhasil dimuat!")
+                                        if hasattr(st, "rerun"):
+                                            st.rerun()
+                                        else:
+                                            st.experimental_rerun()
+                                    else:
+                                        st.error("Gagal memuat analisis.")
+                        with col_btn2:
+                            if st.button("🗑️", key=f"delete_card_{opt['dir_name']}", use_container_width=True, help="Hapus analisis ini dari riwayat"):
+                                import shutil
+                                cache_dir = os.path.join("data", "analysis_results", opt["dir_name"])
+                                try:
+                                    shutil.rmtree(cache_dir)
+                                    if hasattr(st, "rerun"):
+                                        st.rerun()
+                                    else:
+                                        st.experimental_rerun()
+                                except Exception as e:
+                                    st.error(f"Gagal: {e}")
+                    else:
+                        if st.button("📂 Muat Analisis", key=f"load_card_{opt['dir_name']}", use_container_width=True):
+                            with st.spinner("Memuat analisis..."):
+                                    if load_saved_analysis_from_disk(opt["dir_name"], opt["params"]):
+                                        st.success(f"Analisis untuk {opt['game_name']} berhasil dimuat!")
+                                        if hasattr(st, "rerun"):
+                                            st.rerun()
+                                        else:
+                                            st.experimental_rerun()
+                                    else:
+                                        st.error("Gagal memuat analisis.")
     else:
         st.markdown("*Belum ada riwayat analisis yang tersimpan. Silakan lakukan analisis pertama Anda di sebelah kiri.*")
