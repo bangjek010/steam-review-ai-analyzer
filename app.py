@@ -82,6 +82,108 @@ def get_steam_game_details(app_id):
         'image': f"https://shared.fastly.steamstatic.com/store_images_api/v2/50/apps/{app_id}/header.jpg"
     }
 
+def get_all_saved_analyses():
+    cache_root = os.path.join("data", "analysis_results")
+    if not os.path.exists(cache_root):
+        return []
+    try:
+        folders = [f for f in os.listdir(cache_root) if os.path.isdir(os.path.join(cache_root, f))]
+    except Exception:
+        return []
+    
+    options = []
+    for f in folders:
+        if f.startswith("analysis_"):
+            parts = f.split("_")
+            if len(parts) >= 7:
+                app_id_val = parts[1]
+                rev_type_val = parts[2]
+                lang_val = parts[3]
+                topics_val = parts[4]
+                min_df_val = parts[5]
+                max_df_val = parts[6]
+                
+                json_path = os.path.join(cache_root, f, "analysis_data.json")
+                game_name = f"Steam App {app_id_val}"
+                game_image = f"https://shared.fastly.steamstatic.com/store_images_api/v2/50/apps/{app_id_val}/header.jpg"
+                total_reviews = 0
+                
+                if os.path.exists(json_path):
+                    try:
+                        with open(json_path, 'r', encoding='utf-8') as file_json:
+                            cache_data = json.load(file_json)
+                            game_name = cache_data.get("game_name", game_name)
+                            game_image = cache_data.get("game_image", game_image)
+                    except Exception:
+                        pass
+                
+                clean_csv_path = os.path.join(cache_root, f, "clean.csv")
+                if os.path.exists(clean_csv_path):
+                    try:
+                        with open(clean_csv_path, 'r', encoding='utf-8') as f_csv:
+                            total_reviews = sum(1 for _ in f_csv) - 1
+                    except Exception:
+                        pass
+                
+                options.append({
+                    "dir_name": f,
+                    "game_name": game_name,
+                    "game_image": game_image,
+                    "total_reviews": total_reviews,
+                    "params": {
+                        "app_id": app_id_val,
+                        "review_type": rev_type_val,
+                        "language": lang_val,
+                        "num_topics": int(topics_val),
+                        "min_df_val": int(min_df_val) if min_df_val.isdigit() else 5,
+                        "max_df_val": float(max_df_val) if max_df_val.replace('.', '', 1).isdigit() else 0.85
+                    }
+                })
+    return options
+
+def load_saved_analysis_from_disk(dir_name, p):
+    cache_dir = os.path.join("data", "analysis_results", dir_name)
+    raw_csv_path = os.path.join(cache_dir, "raw.csv")
+    clean_csv_path = os.path.join(cache_dir, "clean.csv")
+    json_path = os.path.join(cache_dir, "analysis_data.json")
+    
+    if os.path.exists(raw_csv_path) and os.path.exists(clean_csv_path) and os.path.exists(json_path):
+        with open(json_path, 'r', encoding='utf-8') as f:
+            cache_data = json.load(f)
+
+        st.session_state.df_raw = pd.read_csv(raw_csv_path)
+        st.session_state.df_clean = pd.read_csv(clean_csv_path)
+        st.session_state.lda_components = np.array(cache_data["lda_components"])
+        st.session_state.nama_fitur = np.array(cache_data["nama_fitur"])
+        st.session_state.topic_labels = cache_data["topic_labels"]
+        st.session_state.ai_insight = cache_data.get("ai_insight")
+        
+        game_name = cache_data.get("game_name")
+        game_image = cache_data.get("game_image")
+        if not game_name or not game_image:
+            details = get_steam_game_details(p["app_id"])
+            game_name = details['name']
+            game_image = details['image']
+            cache_data["game_name"] = game_name
+            cache_data["game_image"] = game_image
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, ensure_ascii=False, indent=4)
+        st.session_state.game_name = game_name
+        st.session_state.game_image = game_image
+        
+        st.session_state.app_id = p["app_id"]
+        st.session_state.review_type = p["review_type"]
+        st.session_state.language = p["language"]
+        st.session_state.num_topics = p["num_topics"]
+        st.session_state.min_df_val = p["min_df_val"]
+        st.session_state.max_df_val = p["max_df_val"]
+        
+        st.session_state.cache_dir = cache_dir
+        st.session_state.data_diproses = True
+        return True
+    return False
+
+
 
 st.set_page_config(page_title="Steam Review Topic Analyzer", layout="wide")
 
@@ -321,49 +423,8 @@ if saved_analyses:
     selected_opt = next(opt for opt in saved_analyses if opt["display"] == selected_display)
     
     if st.sidebar.button("📂 Muat Analisis"):
-        cache_dir = os.path.join("data", "analysis_results", selected_opt["dir_name"])
-        raw_csv_path = os.path.join(cache_dir, "raw.csv")
-        clean_csv_path = os.path.join(cache_dir, "clean.csv")
-        json_path = os.path.join(cache_dir, "analysis_data.json")
-        
-        if os.path.exists(raw_csv_path) and os.path.exists(clean_csv_path) and os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                cache_data = json.load(f)
-
-            st.session_state.df_raw = pd.read_csv(raw_csv_path)
-            st.session_state.df_clean = pd.read_csv(clean_csv_path)
-            st.session_state.lda_components = np.array(cache_data["lda_components"])
-            st.session_state.nama_fitur = np.array(cache_data["nama_fitur"])
-            st.session_state.topic_labels = cache_data["topic_labels"]
-            st.session_state.ai_insight = cache_data.get("ai_insight")
-            
-            p = selected_opt["params"]
-
-            game_name = cache_data.get("game_name")
-            game_image = cache_data.get("game_image")
-            if not game_name or not game_image:
-                details = get_steam_game_details(p["app_id"])
-                game_name = details['name']
-                game_image = details['image']
-                cache_data["game_name"] = game_name
-                cache_data["game_image"] = game_image
-                with open(json_path, 'w', encoding='utf-8') as f:
-                    json.dump(cache_data, f, ensure_ascii=False, indent=4)
-            st.session_state.game_name = game_name
-            st.session_state.game_image = game_image
-            
-
-            st.session_state.app_id = p["app_id"]
-            st.session_state.review_type = p["review_type"]
-            st.session_state.language = p["language"]
-            st.session_state.num_topics = p["num_topics"]
-            st.session_state.min_df_val = p["min_df_val"]
-            st.session_state.max_df_val = p["max_df_val"]
-            
-            st.session_state.cache_dir = cache_dir
-            st.session_state.data_diproses = True
-            
-            st.success(f"Analisis untuk App ID {p['app_id']} berhasil dimuat!")
+        if load_saved_analysis_from_disk(selected_opt["dir_name"], selected_opt["params"]):
+            st.success(f"Analisis untuk App ID {selected_opt['params']['app_id']} berhasil dimuat!")
             if hasattr(st, "rerun"):
                 st.rerun()
             else:
@@ -810,4 +871,46 @@ if st.session_state.data_diproses:
                     st.error("Koneksi AI/API terputus. Silakan coba lagi ketika API terhubung.")
 
 elif not btn_proses:
-    st.info("👈 Silakan atur konfigurasi di sebelah kiri, lalu klik tombol 'Mulai Analisis'.")
+    st.info("👈 Silakan atur konfigurasi di sebelah kiri, lalu klik tombol 'Mulai Analisis' untuk memulai analisis baru.")
+    
+    st.markdown("---")
+    st.subheader("📂 Riwayat Analisis Tersimpan")
+    
+    all_saved = get_all_saved_analyses()
+    if all_saved:
+        # Urutkan atau batasi jika perlu, tampilkan dalam grid 3 kolom
+        cols = st.columns(3)
+        for idx, opt in enumerate(all_saved):
+            col_idx = idx % 3
+            with cols[col_idx]:
+                with st.container(border=True):
+                    # Tampilkan gambar game
+                    st.image(opt["game_image"], use_container_width=True)
+                    
+                    # Nama & App ID
+                    st.markdown(f"##### **{opt['game_name']}**")
+                    
+                    # Tampilkan badge info
+                    st.markdown(f"""
+                    <div style="margin-top: 5px; margin-bottom: 10px; line-height: 1.8;">
+                        <span class="stat-badge badge-id">ID: {opt['params']['app_id']}</span>
+                        <span class="stat-badge badge-count">📝 {opt['total_reviews']} Ulasan</span>
+                        <br/>
+                        <span class="stat-badge badge-type">{opt['params']['review_type'].upper()}</span>
+                        <span class="stat-badge badge-lang">{opt['params']['language'].title()}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Tombol Muat Analisis
+                    if st.button("📂 Muat Analisis", key=f"load_card_{opt['dir_name']}", use_container_width=True):
+                        with st.spinner("Memuat analisis..."):
+                            if load_saved_analysis_from_disk(opt["dir_name"], opt["params"]):
+                                st.success(f"Analisis untuk {opt['game_name']} berhasil dimuat!")
+                                if hasattr(st, "rerun"):
+                                    st.rerun()
+                                else:
+                                    st.experimental_rerun()
+                            else:
+                                st.error("Gagal memuat analisis.")
+    else:
+        st.markdown("*Belum ada riwayat analisis yang tersimpan. Silakan lakukan analisis pertama Anda di sebelah kiri.*")
